@@ -1,0 +1,15 @@
+version: "3.5"
+services:
+  gowebpractice:
+    platform: linux/amd64
+    container_name: gowebpractice
+    build:
+      context: ./.dockers/mysql
+      dockerfile: Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gowebpractice
+    ports:
+      - "8080:3306"
+    volumes:
+      - ./.dockers/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
