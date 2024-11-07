@@ -1,53 +1,42 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/SanGameDev/GoWebPractice/internal/user"
+	"github.com/SanGameDev/GoWebPractice/pkg/bootstrap"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 func main() {
 	router := mux.NewRouter()
 	_ = godotenv.Load()
-	dsn := fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local",
-		os.Getenv("DATABASE_USER"),
-		os.Getenv("DATABASE_PASSWORD"),
-		os.Getenv("DATABASE_HOST"),
-		os.Getenv("DATABASE_PORT"),
-		os.Getenv("DATABASE_NAME"))
+	l := bootstrap.InitLogger()
 
-	fmt.Println(dsn)
-	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	_ = db.Debug()
+	db, err := bootstrap.DBConnection()
+	if err != nil {
+		l.Fatal(err)
+	}
 
-	_ = db.AutoMigrate(&user.User{})
-
-	userRepository := user.NewRepository(db)
-	userService := user.NewService(userRepository)
-	userEnd := user.MakeEndpoints(userService)
+	userRepo := user.NewRepo(l, db)
+	userSrv := user.NewService(l, userRepo)
+	userEnd := user.MakeEndpoints(userSrv)
 
 	router.HandleFunc("/users", userEnd.Create).Methods("POST")
+	router.HandleFunc("/users/{id}", userEnd.Get).Methods("GET")
 	router.HandleFunc("/users", userEnd.GetAll).Methods("GET")
-	router.HandleFunc("/users", userEnd.Update).Methods("PATCH")
-	router.HandleFunc("/users", userEnd.Delete).Methods("DELETE")
+	router.HandleFunc("/users/{id}", userEnd.Update).Methods("PATCH")
+	router.HandleFunc("/users/{id}", userEnd.Delete).Methods("DELETE")
 
 	srv := &http.Server{
 		Handler:      router,
-		Addr:         "127.0.0.1:8080",
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
+		Addr:         "127.0.0.1:8000",
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
-	err := srv.ListenAndServe()
-	if err != nil {
-		log.Fatal(err)
-	}
+	log.Fatal(srv.ListenAndServe())
 }
