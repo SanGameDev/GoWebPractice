@@ -5,14 +5,15 @@ import (
 	"log"
 	"strings"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"github.com/SanGameDev/GoWebPractice/internal/domain"
 )
 
 type Repository interface {
-	Create(user *User) error
-	GetAll(filters Filters) ([]User, error)
-	Get(id string) (*User, error)
+	Create(user *domain.User) error
+	GetAll(filters Filters, offset, limit int) ([]domain.User, error)
+	Get(id string) (*domain.User, error)
 	Delete(id string) error
 	Update(id string, firstName *string, lastName *string, email *string, phone *string) error
 	Count(filtes Filters) (int, error)
@@ -30,8 +31,7 @@ func NewRepo(log *log.Logger, db *gorm.DB) Repository {
 	}
 }
 
-func (repo *repo) Create(user *User) error {
-	user.ID = uuid.New().String()
+func (repo *repo) Create(user *domain.User) error {
 
 	if err := repo.db.Create(user).Error; err != nil {
 		repo.log.Println(err)
@@ -41,11 +41,12 @@ func (repo *repo) Create(user *User) error {
 	return nil
 }
 
-func (repo *repo) GetAll(filters Filters) ([]User, error) {
-	var u []User
+func (repo *repo) GetAll(filters Filters, offset, limit int) ([]domain.User, error) {
+	var u []domain.User
 
 	tx := repo.db.Model(&u)
 	tx = applyFilters(tx, filters)
+	tx = tx.Offset(offset).Limit(limit)
 	result := tx.Order("created_at desc").Find(&u)
 
 	if result.Error != nil {
@@ -55,8 +56,8 @@ func (repo *repo) GetAll(filters Filters) ([]User, error) {
 	return u, nil
 }
 
-func (repo *repo) Get(id string) (*User, error) {
-	user := User{ID: id}
+func (repo *repo) Get(id string) (*domain.User, error) {
+	user := domain.User{ID: id}
 
 	if err := repo.db.First(&user).Error; err != nil {
 		return nil, err
@@ -66,7 +67,7 @@ func (repo *repo) Get(id string) (*User, error) {
 }
 
 func (repo *repo) Delete(id string) error {
-	user := User{ID: id}
+	user := domain.User{ID: id}
 
 	if err := repo.db.Delete(&user).Error; err != nil {
 		return err
@@ -95,7 +96,7 @@ func (repo *repo) Update(id string, firstName *string, lastName *string, email *
 		values["phone"] = *phone
 	}
 
-	if err := repo.db.Model(&User{}).Where("id = ?", id).Updates(values).Error; err != nil {
+	if err := repo.db.Model(&domain.User{}).Where("id = ?", id).Updates(values).Error; err != nil {
 		return err
 	}
 
@@ -119,7 +120,7 @@ func applyFilters(tx *gorm.DB, filters Filters) *gorm.DB {
 
 func (repo *repo) Count(filters Filters) (int, error) {
 	var count int64
-	tx := repo.db.Model(User{})
+	tx := repo.db.Model(domain.User{})
 	tx = applyFilters(tx, filters)
 
 	if err := tx.Count(&count).Error; err != nil {

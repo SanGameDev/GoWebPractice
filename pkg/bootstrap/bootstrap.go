@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/SanGameDev/GoWebPractice/internal/user"
+	"github.com/SanGameDev/GoWebPractice/internal/domain"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -29,7 +29,15 @@ func DBConnection() (*gorm.DB, error) {
 	}
 
 	if os.Getenv("DATABASE_MIGRATE") == "true" {
-		if err := db.AutoMigrate(&user.User{}); err != nil {
+		if err := db.AutoMigrate(&domain.User{}); err != nil {
+			return nil, err
+		}
+
+		if err := db.AutoMigrate(&domain.Course{}); err != nil {
+			return nil, err
+		}
+
+		if err := db.AutoMigrate(&domain.Enrollment{}); err != nil {
 			return nil, err
 		}
 	}
